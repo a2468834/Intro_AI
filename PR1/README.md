@@ -1,7 +1,8 @@
 README
 ===
 
-**Course:** Course: Introduction to AI
+**Course:** Introduction to AI
+
 **Title:** Programming Assignment #1
 
 The objective of this assignment is practicing with the classical search algorithms, which is BFS, IDS, and A*.
