@@ -71,19 +71,19 @@ int main()
 
         if(split_str[0] == "BFS")
         {
-            cout<<getLine_str;
+            cout<<getLine_str<<endl;
             cout<<"--------------------"<<endl;
             BFS( goal_point, move );
         }
         else if(split_str[0] == "IDS")
         {
-            cout<<getLine_str;
+            cout<<getLine_str<<endl;
             cout<<"--------------------"<<endl;
             IDS( goal_point, move );
         }
         else if(split_str[0] == "A*")
         {
-            cout<<getLine_str;
+            cout<<getLine_str<<endl;
             cout<<"--------------------"<<endl;
             A_Star( goal_point, move );
         }
@@ -180,6 +180,7 @@ void printSolWithEvaFunc( struct node* goal_node, struct node* root_node, vector
     cout<<", Evaluation:";
     cout<<heuriFunc(itr->coord, goal_node->coord)<<" + ";
     cout<<pathCost(itr->next_action, move)<<endl;
+    cout<<endl;
     
     if(root_node->parent != root_node)cout<<"Error!";
 }
