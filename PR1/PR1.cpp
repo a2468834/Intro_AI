@@ -1,3 +1,10 @@
+/*  
+ *  Programming Assignment #1
+ *  
+ *  Course: Introduction to AI
+ *  Writer_ID: 0416047
+ *  Writer_Name: Chuan-Chun, Wang
+ */
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
