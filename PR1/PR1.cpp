@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <ctime>
 #include <iostream>
 #include <string>
 #include <deque>
@@ -78,21 +79,27 @@ int main()
 
         if(split_str[0] == "BFS")
         {
+            clock_t tStart = clock();
             cout<<getLine_str<<endl;
             cout<<"--------------------"<<endl;
             BFS( goal_point, move );
+            cout<<"time:"<<(double) (clock()-tStart)/CLOCKS_PER_SEC<<endl;
         }
         else if(split_str[0] == "IDS")
         {
+            clock_t tStart = clock();
             cout<<getLine_str<<endl;
             cout<<"--------------------"<<endl;
             IDS( goal_point, move );
+            cout<<"time:"<<(double) (clock()-tStart)/CLOCKS_PER_SEC<<endl;
         }
         else if(split_str[0] == "A*")
         {
+            clock_t tStart = clock();
             cout<<getLine_str<<endl;
             cout<<"--------------------"<<endl;
             A_Star( goal_point, move );
+            cout<<"time:"<<(double) (clock()-tStart)/CLOCKS_PER_SEC<<endl;
         }
         else error_method = -1;
 
