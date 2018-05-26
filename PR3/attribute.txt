@@ -1,0 +1,13 @@
+- cross200.txt
+	- 2 attributes
+	- 1 class
+
+- iris.txt
+	- 4 attributes
+	- 1 class
+
+- optical-digits
+	- 64 attributes
+	- 1 class
+
+
