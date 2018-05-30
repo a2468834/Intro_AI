@@ -57,9 +57,6 @@ int main(int argc, char** argv)
 	{
 		root = read_iris(input_file);
 		pair<struct node*, struct node*>test = partition(root, "attr_0", 5.8);
-
-		cout<<test.first->data.size()<<endl;
-		cout<<test.second->data.size()<<endl;
 	}
 
 	return 0;
@@ -90,12 +87,13 @@ struct node* read_iris(fstream& input_file)
 {
 	string one_line_input_string;
 	//vector<vector<pair<string, float>>>dataset;
-    struct node* root_node = (struct node*) malloc( sizeof( struct node ) );
+    struct node* root_node = new struct node;
 
     root_node->parent = NULL;
     root_node->true_branch = NULL;
     root_node->false_branch = NULL;
     root_node->impurity = 0;
+    root_node->data.clear();
     
 	while( getline(input_file, one_line_input_string) )
 	{
@@ -110,58 +108,53 @@ struct node* read_iris(fstream& input_file)
 		sample_temp.value.push_back( make_pair( "attr_3", stof(temp[3]) ) );
 		
 		sample_temp.class_attr = temp[4];
-		
-		//if(temp[4] == "Iris-setosa" )sample.push_back( make_pair( "class_attr", 0 ) );
-		//else if(temp[4] == "Iris-versicolor" )sample.push_back( make_pair( "class_attr", 1 ) );
-		//else if(temp[4] == "Iris-virginica" )sample.push_back( make_pair( "class_attr", 2 ) );
-		
 
 		root_node->data.push_back(sample_temp);
 	}
-	
 	return root_node;
 }
 
 pair<struct node*, struct node*> partition(struct node* node, string attr, float threshold)
 {
-	struct node* true_child = (struct node*) malloc( sizeof( struct node ) );
-	struct node* false_child = (struct node*) malloc( sizeof( struct node ) );
+	struct node* true_child = new struct node;
+	struct node* false_child = new struct node;
 
 	// Initialize the 'true_child'
 	true_child->parent = node;
 	true_child->true_branch = NULL;
 	true_child->false_branch = NULL;
 	true_child->impurity = 0;
+	true_child->data.clear();
 
 	// Initialize the 'true_child'
 	false_child->parent = node;
 	false_child->true_branch = NULL;
 	false_child->false_branch = NULL;
 	false_child->impurity = 0;
+	false_child->data.clear();
 	
 	// Find the position of the selected attribute in each 'node->data.value'.
 	int attr_pos = 0;
 	for(; attr_pos<node->data[0].value.size(); attr_pos++)
 		if(node->data[0].value[attr_pos].first == attr)break;
+
 	
 	for(int i=0; i<node->data.size(); i++)
 	{
 		struct sample temp = node->data[i];
 
-		//true_child->data.push_back(temp);
-		/*
 		// Belong to true_branch
 		if( temp.value[attr_pos].second >= threshold )
 			true_child->data.push_back(temp);
 
 		// Belong to false_branch
 		else false_child->data.push_back(temp);
-		*/
+		
 	}
 
 	// Calculate Gini's impurity of both branches.
-	//true_child->impurity = gini_impurity(true_child);
-	//false_child->impurity = gini_impurity(false_child);
+	true_child->impurity = gini_impurity(true_child);
+	false_child->impurity = gini_impurity(false_child);
 	
 	return make_pair(true_child, false_child);
 }
