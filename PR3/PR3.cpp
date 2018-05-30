@@ -17,6 +17,7 @@ vector<pair<string, int>> class_counts(struct node* node);
 float gini_impurity(struct node* node);
 bool classify_function(float threshold, float subject);
 pair<struct node*, struct node*> partition(struct node* node, string attr, float threshold);
+float information_gain(struct node* parent, struct node* true_child, struct node* false_child);
 
 // Some data structure
 struct sample
@@ -57,6 +58,8 @@ int main(int argc, char** argv)
 	{
 		root = read_iris(input_file);
 		pair<struct node*, struct node*>test = partition(root, "attr_0", 5.8);
+		cout<<root->impurity<<"@@"<<test.first->impurity<<"@@"<<test.second->impurity<<endl;
+		cout<<information_gain(root, test.first, test.second)<<endl;
 	}
 
 	return 0;
@@ -111,6 +114,7 @@ struct node* read_iris(fstream& input_file)
 
 		root_node->data.push_back(sample_temp);
 	}
+	root_node->impurity = gini_impurity(root_node);
 	return root_node;
 }
 
@@ -170,6 +174,12 @@ float gini_impurity(struct node* node)
 		impurity = impurity - prob*prob;
 	}
 	return impurity;
+}
+
+float information_gain(struct node* parent, struct node* true_child, struct node* false_child)
+{
+	float prop = (float) true_child->data.size() / ( true_child->data.size() + false_child->data.size() );
+	return parent->impurity - prop*true_child->impurity - (1-prop)*false_child->impurity;
 }
 
 vector<pair<string, int>> class_counts(struct node* node)
