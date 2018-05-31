@@ -27,8 +27,8 @@ void print_tree(struct node* node, string space);
 struct node* build_tree(struct node* node, int attr_num);
 bool is_leaf_node(struct node* node);
 void holdout_method(struct node* total, struct node* train_root, struct node* valid_root);
-string classify_function(struct sample sample, const struct node* node);
-float validation(const struct node* train_root, vector<struct sample> valid_data);
+string classify_function(struct sample sample, struct node* node);
+float validation(struct node* train_root, vector<struct sample> valid_data);
 
 // Some data structure
 struct sample
@@ -97,7 +97,7 @@ int main(int argc, char** argv)
 		// The 'attr_num' of iris.txt is 4.
 		build_tree(train_root, 4);
 		print_tree(train_root, "");
-		//cout<<validation(train_root, train_root->data)<<endl;
+		cout<<validation(train_root, valid_root->data)<<endl;
 	}
 	return 0;
 }
@@ -283,7 +283,7 @@ float gini_impurity(struct node* node)
 	
 	for(int i=0; i<counts.size(); i++)
 	{
-		float prob = (float) counts[i].second / node->data.size();
+		float prob = (float)counts[i].second / node->data.size();
 		impurity -= prob*prob;
 	}
 
@@ -292,8 +292,8 @@ float gini_impurity(struct node* node)
 
 float information_gain(struct node* parent, struct node* true_child, struct node* false_child)
 {
-	float prop = (float) true_child->data.size() / ( true_child->data.size() + false_child->data.size() );
-	return (float) parent->impurity - prop*true_child->impurity - (1-prop)*false_child->impurity;
+	float prop = (float)true_child->data.size() / ( true_child->data.size() + false_child->data.size() );
+	return (float)parent->impurity - prop*true_child->impurity - (1-prop)*false_child->impurity;
 }
 
 vector<pair<string, int>> class_counts(struct node* node)
@@ -428,7 +428,7 @@ void print_tree(struct node* node, string space)
 	}
 }
 
-float validation(const struct node* train_root, vector<struct sample> valid_data)
+float validation(struct node* train_root, vector<struct sample> valid_data)
 {
 	int correct_classified_num = 0;
 
@@ -438,27 +438,25 @@ float validation(const struct node* train_root, vector<struct sample> valid_data
 		if(classify_function(valid_data[i], train_root) == valid_data[i].class_attr)
 			correct_classified_num++;
 	}
-	return (float) (correct_classified_num / valid_data.size());
+	return (float)correct_classified_num / (float)valid_data.size();
 }
 
-string classify_function(struct sample sample, const struct node* node)
+string classify_function(struct sample sample, struct node* node)
 {
-	// 'const struct node* node' equals to an iterator moving on the trained decision tree;
+	// 'const struct node* node' equals to an "iterator" moving on the trained decision tree;
 	
-	// The "iterator" moves on a leaf of the trained decision tree.
-	// It means that we get the result of classification of this sample.
-	
+	// When this "iterator" moves on a leaf of the trained decision tree, it means that we 
+	// obtain the classification result of this sample.
 	if( node->is_leaf == true )return node->data[0].class_attr;
 
 	else
-	{
-		
+	{		
 		int part_attr_index = 0;
 		for( ; part_attr_index<sample.value.size(); part_attr_index++)
 			if( sample.value[part_attr_index].first == node->part_attr )break;
 
 		if( sample.value[part_attr_index].second >= node->part_thres )
-			classify_function(sample, node->true_branch);
-		else classify_function(sample, node->false_branch);
+			return classify_function(sample, node->true_branch);
+		else return classify_function(sample, node->false_branch);
 	}
 }
