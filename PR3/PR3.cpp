@@ -23,6 +23,12 @@ pair<struct node*, struct node*> partition(struct node* node, string attr, float
 float information_gain(struct node* parent, struct node* true_child, struct node* false_child);
 bool comparison(const struct sample& A, const struct sample& B, const int& selected_attr);
 pair<float, float> find_best_partition(struct node* node, int selected_attr);
+void print_tree(struct node* node, string space);
+struct node* build_tree(struct node* node, int attr_num);
+bool is_leaf_node(struct node* node);
+void holdout_method(struct node* total, struct node* train_root, struct node* valid_root);
+string classify_function(struct sample sample, const struct node* node);
+float validation(const struct node* train_root, vector<struct sample> valid_data);
 
 // Some data structure
 struct sample
@@ -40,6 +46,7 @@ struct node
 	float impurity;
 	string part_attr;
 	float part_thres;
+	bool is_leaf;
 };
 
 class sorter
@@ -60,6 +67,9 @@ public:
 // Function implementation
 int main(int argc, char** argv)
 {
+	// Initialize random function with the seed.
+	srand(time(NULL));
+	
 	if( argc != 2 )
 	{
 		cout<<"Please check the number of input file."<<endl;
@@ -68,7 +78,9 @@ int main(int argc, char** argv)
 
 	fstream input_file(argv[1], ios::in);
 	string input_file_name(argv[1]);
-	struct node* root;
+	struct node* total = new struct node;
+	struct node* train_root = new struct node;
+	struct node* valid_root = new struct node;
 
 	if( input_file.fail() )
 	{
@@ -78,10 +90,15 @@ int main(int argc, char** argv)
 
 	if( input_file_name == "iris.txt" )
 	{
-		root = read_iris(input_file);
-		build_tree(root, 4);
+		total = read_iris(input_file);
+		holdout_method(total, train_root, valid_root);
+		train_root->impurity = gini_impurity(train_root);
+		
+		// The 'attr_num' of iris.txt is 4.
+		build_tree(train_root, 4);
+		print_tree(train_root, "");
+		//cout<<validation(train_root, train_root->data)<<endl;
 	}
-
 	return 0;
 }
 
@@ -118,11 +135,14 @@ struct node* read_iris(fstream& input_file)
 	//vector<vector<pair<string, float>>>dataset;
     struct node* root_node = new struct node;
 
+    root_node->data.clear();
     root_node->parent = NULL;
     root_node->true_branch = NULL;
     root_node->false_branch = NULL;
-    root_node->impurity = 0;
-    root_node->data.clear();
+    root_node->impurity = 1;
+   	root_node->part_attr.clear();
+	root_node->part_thres = 0;
+	root_node->is_leaf = false;
     
 	while( getline(input_file, one_line_input_string) )
 	{
@@ -136,12 +156,45 @@ struct node* read_iris(fstream& input_file)
 		sample_temp.value.push_back( make_pair( "attr_2", stof(temp[2]) ) );
 		sample_temp.value.push_back( make_pair( "attr_3", stof(temp[3]) ) );
 		
-		sample_temp.class_attr = temp[4];
+		for(int i=0; i<(temp[4].size()-1); i++)
+		{
+			sample_temp.class_attr = sample_temp.class_attr + temp[4][i];
+		}
 
 		root_node->data.push_back(sample_temp);
 	}
 	root_node->impurity = gini_impurity(root_node);
 	return root_node;
+}
+
+void holdout_method(struct node* total, struct node* train_root, struct node* valid_root)
+{
+	int counter = 0;
+	vector<int> selection_list;
+	
+	while( counter < (0.7*total->data.size()) )
+	{
+		int selected_sample = rand()%total->data.size();
+		sort(selection_list.begin(), selection_list.end());
+
+		// Return vector.end() when "404 NOT FOUND".
+		vector<int>::iterator itr = find(selection_list.begin(), selection_list.end(), selected_sample);
+		
+		// This index has not been selected yet.
+		if(itr == selection_list.end())
+		{
+			train_root->data.push_back( total->data[selected_sample] );
+			selection_list.push_back(selected_sample);
+			counter++;
+		}
+		else continue;
+	}
+	for(int i=0; i<total->data.size(); i++)
+	{
+		// This index has not been selected into training subset.
+		if( find(selection_list.begin(), selection_list.end(), i) == selection_list.end() )
+			valid_root->data.push_back( total->data[i] );
+	}
 }
 
 pair<struct node*, struct node*> partition(struct node* parent, int selected_attr, float threshold)
@@ -154,18 +207,20 @@ pair<struct node*, struct node*> partition(struct node* parent, int selected_att
 	true_child->parent = parent;
 	true_child->true_branch = NULL;
 	true_child->false_branch = NULL;
-	true_child->impurity = 0;
+	true_child->impurity = 1;
 	true_child->part_attr.clear();
 	true_child->part_thres = 0;
+	true_child->is_leaf = false;
 
 	// Initialize the 'false_child'
 	false_child->data.clear();
 	false_child->parent = parent;
 	false_child->true_branch = NULL;
 	false_child->false_branch = NULL;
-	false_child->impurity = 0;
+	false_child->impurity = 1;
 	false_child->part_attr.clear();
 	false_child->part_thres = 0;
+	false_child->is_leaf = false;
 	
 	for(int i=0; i<parent->data.size(); i++)
 	{
@@ -182,89 +237,6 @@ pair<struct node*, struct node*> partition(struct node* parent, int selected_att
 	false_child->impurity = gini_impurity(false_child);
 	
 	return make_pair(true_child, false_child);
-}
-
-float gini_impurity(struct node* node)
-{
-	float impurity = 1;
-	vector<pair<string, int>>counts = class_counts(node);
-	
-	for(int i=0; i<counts.size(); i++)
-	{
-		float prob = (float) counts[i].second / node->data.size();
-		impurity = impurity - prob*prob;
-	}
-	return impurity;
-}
-
-float information_gain(struct node* parent, struct node* true_child, struct node* false_child)
-{
-	float prop = (float) true_child->data.size() / ( true_child->data.size() + false_child->data.size() );
-	return parent->impurity - prop*true_child->impurity - (1-prop)*false_child->impurity;
-}
-
-vector<pair<string, int>> class_counts(struct node* node)
-{
-	vector<pair<string, int>>counts;
-
-	for(vector<struct sample>::iterator itr = node->data.begin(); 
-		itr != node->data.end(); 
-		itr++)
-	{
-		int flag = 0;
-		for(vector<pair<string, int>>::iterator itrr = counts.begin(); 
-			itrr != counts.end(); 
-			itrr++)
-		{
-			if( itr->class_attr == itrr->first )
-			{
-				flag = 1;
-				itrr->second++;
-			}
-		}
-		//This class_attr has not been counted yet.
-		if( flag == 0 )counts.push_back( make_pair(itr->class_attr, 1) );
-	}
-	return counts;
-}
-
-// Unused nowadays
-bool classify_function(float threshold, float subject)
-{
-	if( subject >= threshold )return true;
-	else return false;
-}
-
-bool is_leaf_node(struct node* node)
-{
-	// A node is the leaf when its impurity is zero (i.e. it's pure).
-	return (node->impurity == 0);
-}
-
-struct node* build_tree(struct node* node, int attr_num)
-{
-	// Initialize random function with the seed.
-	srand(time(NULL));
-
-	// Determine which attribute is selected.
-	int selected_attr = rand()%attr_num;
-	
-	// Find the best information gain and the best threshold of 'selected_attr'.
-	pair<float, float>next_partition = find_best_partition(node, selected_attr);
-	
-	// If we cannot gain more information from partitioning, it means that this node is a leaf.
-	if(next_partition.first == 0)return node;
-
-	// Split the node really.
-	pair<struct node*, struct node*>partition_children = partition(node, selected_attr, next_partition.second);
-	node->true_branch = partition_children.first;
-	node->false_branch = partition_children. second;
-	node->part_attr = node->data[0].value[selected_attr].first;
-	node->part_thres = next_partition.second;
-	
-	// Recursively call the function 'build_tree'.
-	build_tree(partition_children.first);// true_branch
-	build_tree(partition_children.second);// false_branch
 }
 
 pair<float, float> find_best_partition(struct node* parent, int selected_attr)
@@ -304,24 +276,189 @@ pair<float, float> find_best_partition(struct node* parent, int selected_attr)
 	return make_pair(best_info_gain, best_threshold);
 }
 
+float gini_impurity(struct node* node)
+{
+	float impurity = 1;
+	vector<pair<string, int>>counts = class_counts(node);
+	
+	for(int i=0; i<counts.size(); i++)
+	{
+		float prob = (float) counts[i].second / node->data.size();
+		impurity -= prob*prob;
+	}
+
+	return impurity;
+}
+
+float information_gain(struct node* parent, struct node* true_child, struct node* false_child)
+{
+	float prop = (float) true_child->data.size() / ( true_child->data.size() + false_child->data.size() );
+	return (float) parent->impurity - prop*true_child->impurity - (1-prop)*false_child->impurity;
+}
+
+vector<pair<string, int>> class_counts(struct node* node)
+{
+	vector<pair<string, int>>counts;
+
+	for(vector<struct sample>::iterator itr = node->data.begin(); 
+		itr != node->data.end(); 
+		itr++)
+	{
+		int flag = 0;
+		for(vector<pair<string, int>>::iterator itrr = counts.begin(); 
+			itrr != counts.end(); 
+			itrr++)
+		{
+			if( itr->class_attr == itrr->first )
+			{
+				flag = 1;
+				itrr->second++;
+			}
+		}
+		//This class_attr has not been counted yet.
+		if( flag == 0 )counts.push_back( make_pair(itr->class_attr, 1) );
+	}
+	return counts;
+}
+
+bool is_leaf_node(struct node* node)
+{
+	// A node is the leaf when its impurity is zero (i.e. it's totally pure).
+	return ( node->is_leaf == true );
+}
+
+struct node* build_tree(struct node* node, int attr_num)
+{
+	bool pseudo_leaf = false;
+	int hidden_attr = 0;
+	pair<float, float>check_carefully;
+
+	// Determine which attribute is selected.
+	int selected_attr = (int) rand()%attr_num;
+
+	// Find the best information gain and the best threshold of 'selected_attr'.
+	pair<float, float>next_partition = find_best_partition(node, selected_attr);
+
+	// When we gain no info. from partitioning, we must be careful.
+	if( next_partition.first == 0 )
+	{
+		for(int i=0; i<attr_num; i++)
+		{
+			check_carefully = find_best_partition(node, i);
+			// It still can gain some info. from other attribute which isn't the 'selected_attr'.
+			if(check_carefully.first != 0)
+			{	
+				pseudo_leaf = true;
+				hidden_attr = i;
+				break;
+			}
+		}
+	}
+
+	// Pseudo-leaf is a node that can only be partitioned by a certain attribute.
+	if(pseudo_leaf == true)
+	{
+		// Split the node in reality.
+		pair<struct node*, struct node*>partition_children = partition(node, hidden_attr, check_carefully.second);
+		node->true_branch = partition_children.first;
+		node->false_branch = partition_children. second;
+		node->part_attr = node->data[0].value[hidden_attr].first;
+		node->part_thres = check_carefully.second;
+
+		// Recursively call the function 'build_tree'.
+		build_tree(node->true_branch, attr_num);
+		build_tree(node->false_branch, attr_num);
+	}
+
+	else
+	{
+		// If this node cannot gain any info. from any attribute, it means that it's really a leaf.
+		if(next_partition.first == 0)
+		{
+			node->is_leaf = true;
+			node->true_branch = NULL;
+			node->false_branch = NULL;
+			node->part_attr.clear();
+			node->part_thres = 0;
+
+			return node;
+		}
+
+		else
+		{
+			// Split the node in reality.
+			pair<struct node*, struct node*>partition_children = partition(node, selected_attr, next_partition.second);
+			node->true_branch = partition_children.first;
+			node->false_branch = partition_children. second;
+			node->part_attr = node->data[0].value[selected_attr].first;
+			node->part_thres = next_partition.second;
+			
+			// Recursively call the function 'build_tree'.
+			build_tree(node->true_branch, attr_num);
+			build_tree(node->false_branch, attr_num);
+		}
+	}
+}
+
 void print_tree(struct node* node, string space)
 {
-	if( is_leaf_node(node) )
+	if( node->is_leaf == true )
 	{
-		for(int i=0; i<node->data.size(); i++)
-		{
-			for(int j=0; j<node->data[i].value.size(); j++)
-				cout<<setw(4)<<node->data[i].value[j].second<<" ";
-			cout<<node->data[i].class_attr<<endl;
-		}
+		vector<pair<string, int>> temp = class_counts(node);
+		for(int i=0; i<temp.size(); i++)
+			cout<<space<<temp[i].first<<": "<<temp[i].second<<endl;
+		if(node->true_branch!=NULL)cout<<"Wr";
 		return;
 	}
 
+	// The meaning of pratition in this node
 	cout<<space<<node->part_attr<<" >= "<<node->part_thres<<endl;
 
 	// Recursively call the function 'print_tree()'.
-	cout<<space<<"-->TRUE"<<endl;
-	print_tree(node->true_branch, space + ' ');
-	cout<<space<<"-->FALSE"<<endl;
-	print_tree(node->false_branch, space + ' ');
+	if(node->true_branch != NULL)
+	{
+		cout<<space<<"-->TRUE"<<endl;
+		print_tree(node->true_branch, space + '\t');
+	}
+	
+	if(node->false_branch != NULL)
+	{
+		cout<<space<<"-->FALSE"<<endl;
+		print_tree(node->false_branch, space + '\t');
+	}
+}
+
+float validation(const struct node* train_root, vector<struct sample> valid_data)
+{
+	int correct_classified_num = 0;
+
+	for(int i=0; i<valid_data.size(); i++)
+	{
+		// The result of classification matches to the class attribute.
+		if(classify_function(valid_data[i], train_root) == valid_data[i].class_attr)
+			correct_classified_num++;
+	}
+	return (float) (correct_classified_num / valid_data.size());
+}
+
+string classify_function(struct sample sample, const struct node* node)
+{
+	// 'const struct node* node' equals to an iterator moving on the trained decision tree;
+	
+	// The "iterator" moves on a leaf of the trained decision tree.
+	// It means that we get the result of classification of this sample.
+	
+	if( node->is_leaf == true )return node->data[0].class_attr;
+
+	else
+	{
+		
+		int part_attr_index = 0;
+		for( ; part_attr_index<sample.value.size(); part_attr_index++)
+			if( sample.value[part_attr_index].first == node->part_attr )break;
+
+		if( sample.value[part_attr_index].second >= node->part_thres )
+			classify_function(sample, node->true_branch);
+		else classify_function(sample, node->false_branch);
+	}
 }
