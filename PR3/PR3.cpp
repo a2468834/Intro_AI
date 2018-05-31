@@ -5,6 +5,7 @@
 #include <deque>
 #include <utility>
 #include <algorithm>
+#include <iomanip>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -37,6 +38,8 @@ struct node
 	struct node* true_branch;
 	struct node* false_branch;
 	float impurity;
+	string part_attr;
+	float part_thres;
 };
 
 class sorter
@@ -147,18 +150,22 @@ pair<struct node*, struct node*> partition(struct node* parent, int selected_att
 	struct node* false_child = new struct node;
 
 	// Initialize the 'true_child'
+	true_child->data.clear();
 	true_child->parent = parent;
 	true_child->true_branch = NULL;
 	true_child->false_branch = NULL;
 	true_child->impurity = 0;
-	true_child->data.clear();
+	true_child->part_attr.clear();
+	true_child->part_thres = 0;
 
 	// Initialize the 'false_child'
+	false_child->data.clear();
 	false_child->parent = parent;
 	false_child->true_branch = NULL;
 	false_child->false_branch = NULL;
 	false_child->impurity = 0;
-	false_child->data.clear();
+	false_child->part_attr.clear();
+	false_child->part_thres = 0;
 	
 	for(int i=0; i<parent->data.size(); i++)
 	{
@@ -168,7 +175,6 @@ pair<struct node*, struct node*> partition(struct node* parent, int selected_att
 
 		// Belong to false_branch
 		else false_child->data.push_back(parent->data[i]);
-		
 	}
 
 	// Calculate Gini's impurity of both branches.
@@ -249,7 +255,12 @@ struct node* build_tree(struct node* node, int attr_num)
 	// If we cannot gain more information from partitioning, it means that this node is a leaf.
 	if(next_partition.first == 0)return node;
 
+	// Split the node really.
 	pair<struct node*, struct node*>partition_children = partition(node, selected_attr, next_partition.second);
+	node->true_branch = partition_children.first;
+	node->false_branch = partition_children. second;
+	node->part_attr = node->data[0].value[selected_attr].first;
+	node->part_thres = next_partition.second;
 	
 	// Recursively call the function 'build_tree'.
 	build_tree(partition_children.first);// true_branch
@@ -293,7 +304,24 @@ pair<float, float> find_best_partition(struct node* parent, int selected_attr)
 	return make_pair(best_info_gain, best_threshold);
 }
 
-void print_tree()
+void print_tree(struct node* node, string space)
 {
-	
+	if( is_leaf_node(node) )
+	{
+		for(int i=0; i<node->data.size(); i++)
+		{
+			for(int j=0; j<node->data[i].value.size(); j++)
+				cout<<setw(4)<<node->data[i].value[j].second<<" ";
+			cout<<node->data[i].class_attr<<endl;
+		}
+		return;
+	}
+
+	cout<<space<<node->part_attr<<" >= "<<node->part_thres<<endl;
+
+	// Recursively call the function 'print_tree()'.
+	cout<<space<<"-->TRUE"<<endl;
+	print_tree(node->true_branch, space + ' ');
+	cout<<space<<"-->FALSE"<<endl;
+	print_tree(node->false_branch, space + ' ');
 }
