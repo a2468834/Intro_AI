@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 
 using namespace std;
 
@@ -57,9 +58,7 @@ int main(int argc, char** argv)
 	if( input_file_name == "iris.txt" )
 	{
 		root = read_iris(input_file);
-		pair<struct node*, struct node*>test = partition(root, "attr_0", 5.8);
-		cout<<root->impurity<<"@@"<<test.first->impurity<<"@@"<<test.second->impurity<<endl;
-		cout<<information_gain(root, test.first, test.second)<<endl;
+		
 	}
 
 	return 0;
@@ -212,4 +211,30 @@ bool classify_function(float threshold, float subject)
 {
 	if( subject >= threshold )return true;
 	else return false;
+}
+
+bool is_leaf_node(struct node* node)
+{
+	return (node->impurity == 0);
+}
+
+struct node* build_tree(struct node* node, int attr_num)
+{
+	// Initialize random function with the seed.
+	srand(time(NULL));
+	// Determine which attribute is selected.
+	string selected_attr = node->data.value[rand()%attr_num].first;
+	// Find the best information gain and the best threshold of 'selected_attr'.
+	pair<float, float> = find_best_partition(node, selected_attr);
+	
+	if(information_gain == 0)return node;
+
+}
+
+pair<float, float> find_best_partition(struct node* node, int selected_attr)
+{
+	float best_gain = 0;
+	sort(node->data.begin(), node->data.end(), );
+	partition(node, selected_attr, threshold);
+
 }
