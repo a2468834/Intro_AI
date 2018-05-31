@@ -4,6 +4,7 @@
 #include <vector>
 #include <deque>
 #include <utility>
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -19,6 +20,8 @@ float gini_impurity(struct node* node);
 bool classify_function(float threshold, float subject);
 pair<struct node*, struct node*> partition(struct node* node, string attr, float threshold);
 float information_gain(struct node* parent, struct node* true_child, struct node* false_child);
+bool comparison(const struct sample& A, const struct sample& B, const int& selected_attr);
+pair<float, float> find_best_partition(struct node* node, int selected_attr);
 
 // Some data structure
 struct sample
@@ -34,6 +37,21 @@ struct node
 	struct node* true_branch;
 	struct node* false_branch;
 	float impurity;
+};
+
+class sorter
+{
+private:
+	int criteria; // The alias of the position of the attribute in 'sample.value'.
+public:
+	sorter( const int& selected_attr )
+	{
+		criteria = selected_attr;
+	}
+	bool operator()( const struct sample& A, const struct sample& B )const
+	{
+		return comparison(A, B, criteria);
+	}
 };
 
 // Function implementation
@@ -58,7 +76,7 @@ int main(int argc, char** argv)
 	if( input_file_name == "iris.txt" )
 	{
 		root = read_iris(input_file);
-		
+		find_best_partition(root, 0);
 	}
 
 	return 0;
@@ -83,6 +101,11 @@ size_t split( const string& input, vector<string>& output, char delimiter )
     output.push_back( input.substr( initialPos, (min(pos, input.size())-initialPos+1) ) );
 
     return output.size();
+}
+
+bool comparison(const struct sample& A, const struct sample& B, const int& selected_attr)
+{
+	return ( A.value[selected_attr].second < B.value[selected_attr].second );
 }
 
 struct node* read_iris(fstream& input_file)
@@ -117,7 +140,7 @@ struct node* read_iris(fstream& input_file)
 	return root_node;
 }
 
-pair<struct node*, struct node*> partition(struct node* node, string attr, float threshold)
+pair<struct node*, struct node*> partition(struct node* node, int attr, float threshold)
 {
 	struct node* true_child = new struct node;
 	struct node* false_child = new struct node;
@@ -136,18 +159,12 @@ pair<struct node*, struct node*> partition(struct node* node, string attr, float
 	false_child->impurity = 0;
 	false_child->data.clear();
 	
-	// Find the position of the selected attribute in each 'node->data.value'.
-	int attr_pos = 0;
-	for(; attr_pos<node->data[0].value.size(); attr_pos++)
-		if(node->data[0].value[attr_pos].first == attr)break;
-
-	
 	for(int i=0; i<node->data.size(); i++)
 	{
 		struct sample temp = node->data[i];
 
 		// Belong to true_branch
-		if( temp.value[attr_pos].second >= threshold )
+		if( temp.value[attr].second >= threshold )
 			true_child->data.push_back(temp);
 
 		// Belong to false_branch
@@ -223,18 +240,28 @@ struct node* build_tree(struct node* node, int attr_num)
 	// Initialize random function with the seed.
 	srand(time(NULL));
 	// Determine which attribute is selected.
-	string selected_attr = node->data.value[rand()%attr_num].first;
+	int selected_attr = rand()%attr_num;
 	// Find the best information gain and the best threshold of 'selected_attr'.
-	pair<float, float> = find_best_partition(node, selected_attr);
+	pair<float, float> garbbage = find_best_partition(node, selected_attr);
 	
-	if(information_gain == 0)return node;
-
+	//if(information_gain == 0)
+	struct node* garbage;
+	return garbage;
 }
 
 pair<float, float> find_best_partition(struct node* node, int selected_attr)
 {
 	float best_gain = 0;
-	sort(node->data.begin(), node->data.end(), );
-	partition(node, selected_attr, threshold);
+	sort(node->data.begin(), node->data.end(), sorter(selected_attr));
 
+	for(int i=0; i<(node->data.size()-1); i++)
+	{
+		float v_i = node->data[i].value[selected_attr].second;
+		float v_j = node->data[i+1].value[selected_attr].second;
+		float threshold = (v_i + v_j)/2
+		partition(node, selected_attr, threshold);
+	}
+	
+	//partition(node, selected_attr, threshold);
+	return make_pair(1.1, 2.2);
 }
