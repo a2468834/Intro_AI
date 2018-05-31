@@ -76,7 +76,7 @@ int main(int argc, char** argv)
 	if( input_file_name == "iris.txt" )
 	{
 		root = read_iris(input_file);
-		find_best_partition(root, 0);
+		build_tree(root, 4);
 	}
 
 	return 0;
@@ -105,6 +105,7 @@ size_t split( const string& input, vector<string>& output, char delimiter )
 
 bool comparison(const struct sample& A, const struct sample& B, const int& selected_attr)
 {
+	// '<' results in the ascending order (i.e. small -> large).
 	return ( A.value[selected_attr].second < B.value[selected_attr].second );
 }
 
@@ -140,35 +141,33 @@ struct node* read_iris(fstream& input_file)
 	return root_node;
 }
 
-pair<struct node*, struct node*> partition(struct node* node, int attr, float threshold)
+pair<struct node*, struct node*> partition(struct node* parent, int selected_attr, float threshold)
 {
 	struct node* true_child = new struct node;
 	struct node* false_child = new struct node;
 
 	// Initialize the 'true_child'
-	true_child->parent = node;
+	true_child->parent = parent;
 	true_child->true_branch = NULL;
 	true_child->false_branch = NULL;
 	true_child->impurity = 0;
 	true_child->data.clear();
 
-	// Initialize the 'true_child'
-	false_child->parent = node;
+	// Initialize the 'false_child'
+	false_child->parent = parent;
 	false_child->true_branch = NULL;
 	false_child->false_branch = NULL;
 	false_child->impurity = 0;
 	false_child->data.clear();
 	
-	for(int i=0; i<node->data.size(); i++)
+	for(int i=0; i<parent->data.size(); i++)
 	{
-		struct sample temp = node->data[i];
-
 		// Belong to true_branch
-		if( temp.value[attr].second >= threshold )
-			true_child->data.push_back(temp);
+		if( parent->data[i].value[selected_attr].second >= threshold )
+			true_child->data.push_back(parent->data[i]);
 
 		// Belong to false_branch
-		else false_child->data.push_back(temp);
+		else false_child->data.push_back(parent->data[i]);
 		
 	}
 
@@ -232,6 +231,7 @@ bool classify_function(float threshold, float subject)
 
 bool is_leaf_node(struct node* node)
 {
+	// A node is the leaf when its impurity is zero (i.e. it's pure).
 	return (node->impurity == 0);
 }
 
@@ -239,29 +239,61 @@ struct node* build_tree(struct node* node, int attr_num)
 {
 	// Initialize random function with the seed.
 	srand(time(NULL));
+
 	// Determine which attribute is selected.
 	int selected_attr = rand()%attr_num;
-	// Find the best information gain and the best threshold of 'selected_attr'.
-	pair<float, float> garbbage = find_best_partition(node, selected_attr);
 	
-	//if(information_gain == 0)
-	struct node* garbage;
-	return garbage;
+	// Find the best information gain and the best threshold of 'selected_attr'.
+	pair<float, float>next_partition = find_best_partition(node, selected_attr);
+	
+	// If we cannot gain more information from partitioning, it means that this node is a leaf.
+	if(next_partition.first == 0)return node;
+
+	pair<struct node*, struct node*>partition_children = partition(node, selected_attr, next_partition.second);
+	
+	// Recursively call the function 'build_tree'.
+	build_tree(partition_children.first);// true_branch
+	build_tree(partition_children.second);// false_branch
 }
 
-pair<float, float> find_best_partition(struct node* node, int selected_attr)
+pair<float, float> find_best_partition(struct node* parent, int selected_attr)
 {
-	float best_gain = 0;
-	sort(node->data.begin(), node->data.end(), sorter(selected_attr));
+	float best_info_gain = 0;
+	float best_threshold = 0;
 
-	for(int i=0; i<(node->data.size()-1); i++)
+	// First at all, sort 'node.data' along with the "selected" attribute.
+	sort(parent->data.begin(), parent->data.end(), sorter(selected_attr));
+
+	for(int i=0; i<(parent->data.size()-1); i++)
 	{
-		float v_i = node->data[i].value[selected_attr].second;
-		float v_j = node->data[i+1].value[selected_attr].second;
-		float threshold = (v_i + v_j)/2
-		partition(node, selected_attr, threshold);
+		// v_i is the value of the "selected" attribute of a certain sample.
+		// v_j is the same thing of the next sample.
+		float v_i = parent->data[i].value[selected_attr].second;
+		float v_j = parent->data[i+1].value[selected_attr].second;
+		float threshold = (v_i + v_j)/2;
+		pair<struct node*, struct node*> temp;
+
+		// Try to partition the node with a threshold.
+		temp = partition(parent, selected_attr, threshold);
+
+		// Skip the threshold if it does not partition the node at all.
+		if( temp.first->data.size() == 0 )continue;
+		else if( temp.second->data.size() == 0 )continue;
+		
+		// Calculate the information gain after partitioning.
+		float info_gain = information_gain(parent, temp.first, temp.second);
+
+		// Find a way to partition that will produce larger infromation gain than before.
+		if(best_info_gain <= info_gain)
+		{
+			best_info_gain = info_gain;
+			best_threshold = threshold;
+		}
 	}
+	return make_pair(best_info_gain, best_threshold);
+}
+
+void print_tree()
+{
 	
-	//partition(node, selected_attr, threshold);
-	return make_pair(1.1, 2.2);
 }
