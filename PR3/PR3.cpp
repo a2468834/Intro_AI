@@ -23,7 +23,7 @@ string classify_function(struct sample sample, struct node* node);
 bool is_leaf_node(struct node* node);
 void holdout_method(struct node* total, struct node* train_root, struct node* valid_root);
 float validation(struct node* train_root, vector<struct sample> valid_data);
-struct node* build_tree(struct node* node, int attr_num);
+void build_tree(struct node* node, int attr_num);
 void print_tree(struct node* node, string space);
 pair<float, float> find_best_partition(struct node* node, int selected_attr);
 pair<struct node*, struct node*> partition(struct node* node, string attr, float threshold);
@@ -329,7 +329,7 @@ bool is_leaf_node(struct node* node)
 	return ( node->is_leaf == true );
 }
 
-struct node* build_tree(struct node* node, int attr_num)
+void build_tree(struct node* node, int attr_num)
 {
 	bool pseudo_leaf = false;
 	int hidden_attr = 0;
@@ -383,7 +383,7 @@ struct node* build_tree(struct node* node, int attr_num)
 			node->part_attr.clear();
 			node->part_thres = 0;
 
-			return node;
+			return ;
 		}
 
 		else
