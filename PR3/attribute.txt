@@ -1,8 +1,8 @@
-- cross200.txt
+- cross200
 	- 2 attributes
 	- 1 class
 
-- iris.txt
+- iris
 	- 4 attributes
 		- attr_0: median = 5.8
 		- attr_1: median = 3
@@ -12,6 +12,10 @@
 
 - optical-digits
 	- 64 attributes
+	- 1 class
+
+- winequality-red
+	- 11 attributes
 	- 1 class
 
 

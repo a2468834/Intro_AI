@@ -1,0 +1,26 @@
+attr_2 >= 2.45
+-->TRUE
+	attr_2 >= 4.8
+	-->TRUE
+		attr_0 >= 6.7
+		-->TRUE
+			attr_3 >= 1.8
+			-->TRUE
+				Iris-virginica: 15
+			-->FALSE
+				attr_0 >= 7
+				-->TRUE
+					Iris-virginica: 1
+				-->FALSE
+					Iris-versicolor: 2
+		-->FALSE
+			Iris-virginica: 20
+	-->FALSE
+		attr_3 >= 1.65
+		-->TRUE
+			Iris-virginica: 1
+		-->FALSE
+			Iris-versicolor: 33
+-->FALSE
+	Iris-setosa: 33
+0.933333

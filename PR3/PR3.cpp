@@ -15,20 +15,22 @@ using namespace std;
 
 // Function pre-declaration
 size_t split( const string& input, vector<string>& output, char delimiter );
-struct node* read_iris(fstream& input_file);
+bool comparison(const struct sample& A, const struct sample& B, const int& selected_attr);
 vector<pair<string, int>> class_counts(struct node* node);
 float gini_impurity(struct node* node);
-bool classify_function(float threshold, float subject);
-pair<struct node*, struct node*> partition(struct node* node, string attr, float threshold);
 float information_gain(struct node* parent, struct node* true_child, struct node* false_child);
-bool comparison(const struct sample& A, const struct sample& B, const int& selected_attr);
-pair<float, float> find_best_partition(struct node* node, int selected_attr);
-void print_tree(struct node* node, string space);
-struct node* build_tree(struct node* node, int attr_num);
+string classify_function(struct sample sample, struct node* node);
 bool is_leaf_node(struct node* node);
 void holdout_method(struct node* total, struct node* train_root, struct node* valid_root);
-string classify_function(struct sample sample, struct node* node);
 float validation(struct node* train_root, vector<struct sample> valid_data);
+struct node* build_tree(struct node* node, int attr_num);
+void print_tree(struct node* node, string space);
+pair<float, float> find_best_partition(struct node* node, int selected_attr);
+pair<struct node*, struct node*> partition(struct node* node, string attr, float threshold);
+struct node* read_iris(fstream& input_file);
+struct node* read_cross200(fstream& input_file);
+struct node* read_optical(fstream& input_file);
+struct node* read_wine(fstream& input_file);
 
 // Some data structure
 struct sample
@@ -93,12 +95,50 @@ int main(int argc, char** argv)
 		total = read_iris(input_file);
 		holdout_method(total, train_root, valid_root);
 		train_root->impurity = gini_impurity(train_root);
-		
+
 		// The 'attr_num' of iris.txt is 4.
 		build_tree(train_root, 4);
 		print_tree(train_root, "");
 		cout<<validation(train_root, valid_root->data)<<endl;
 	}
+
+	else if( input_file_name == "cross200.txt" )
+	{
+		total = read_cross200(input_file);
+		holdout_method(total, train_root, valid_root);
+		train_root->impurity = gini_impurity(train_root);
+
+		// The 'attr_num' of cross200.txt is .
+		build_tree(train_root, 2);
+		print_tree(train_root, "");
+		cout<<validation(train_root, valid_root->data)<<endl;
+	}
+
+	else if( input_file_name == "optical-digits.txt" )
+	{
+		total = read_optical(input_file);
+		holdout_method(total, train_root, valid_root);
+		train_root->impurity = gini_impurity(train_root);
+
+		// The 'attr_num' of optical-digits.txt is 64.
+		build_tree(train_root, 64);
+		print_tree(train_root, "");
+		cout<<validation(train_root, valid_root->data)<<endl;
+	}
+
+	else if( input_file_name == "winequality-red.txt"  )
+	{
+		total = read_wine(input_file);
+		holdout_method(total, train_root, valid_root);
+		train_root->impurity = gini_impurity(train_root);
+
+		// The 'attr_num' of winequality-red.txt is 11.
+		build_tree(train_root, 11);
+		print_tree(train_root, "");
+		cout<<validation(train_root, valid_root->data)<<endl;
+	}
+
+	else cout<<"Unknown dataset!"<<endl;
 	return 0;
 }
 
@@ -127,44 +167,6 @@ bool comparison(const struct sample& A, const struct sample& B, const int& selec
 {
 	// '<' results in the ascending order (i.e. small -> large).
 	return ( A.value[selected_attr].second < B.value[selected_attr].second );
-}
-
-struct node* read_iris(fstream& input_file)
-{
-	string one_line_input_string;
-	//vector<vector<pair<string, float>>>dataset;
-    struct node* root_node = new struct node;
-
-    root_node->data.clear();
-    root_node->parent = NULL;
-    root_node->true_branch = NULL;
-    root_node->false_branch = NULL;
-    root_node->impurity = 1;
-   	root_node->part_attr.clear();
-	root_node->part_thres = 0;
-	root_node->is_leaf = false;
-    
-	while( getline(input_file, one_line_input_string) )
-	{
-		vector<string> temp;
-		struct sample sample_temp;
-
-		split(one_line_input_string, temp, ',');
-		
-		sample_temp.value.push_back( make_pair( "attr_0", stof(temp[0]) ) );
-		sample_temp.value.push_back( make_pair( "attr_1", stof(temp[1]) ) );
-		sample_temp.value.push_back( make_pair( "attr_2", stof(temp[2]) ) );
-		sample_temp.value.push_back( make_pair( "attr_3", stof(temp[3]) ) );
-		
-		for(int i=0; i<(temp[4].size()-1); i++)
-		{
-			sample_temp.class_attr = sample_temp.class_attr + temp[4][i];
-		}
-
-		root_node->data.push_back(sample_temp);
-	}
-	root_node->impurity = gini_impurity(root_node);
-	return root_node;
 }
 
 void holdout_method(struct node* total, struct node* train_root, struct node* valid_root)
@@ -459,4 +461,167 @@ string classify_function(struct sample sample, struct node* node)
 			return classify_function(sample, node->true_branch);
 		else return classify_function(sample, node->false_branch);
 	}
+}
+
+struct node* read_iris(fstream& input_file)
+{
+	string one_line_input_string;
+    struct node* root_node = new struct node;
+
+    root_node->data.clear();
+    root_node->parent = NULL;
+    root_node->true_branch = NULL;
+    root_node->false_branch = NULL;
+    root_node->impurity = 1;
+   	root_node->part_attr.clear();
+	root_node->part_thres = 0;
+	root_node->is_leaf = false;
+    
+	while( getline(input_file, one_line_input_string) )
+	{
+		vector<string> temp;
+		struct sample sample_temp;
+
+		split(one_line_input_string, temp, ',');
+		
+		// The number of attribute in "iris.txt" is 4.
+		for(int i=0; i<4; i++)
+		{
+			string temmp("attr_");
+			temmp = temmp + to_string(i);
+			sample_temp.value.push_back( make_pair( temmp, stof(temp[i]) ) );
+		}
+		
+		for(int i=0; i<(temp[4].size()-1); i++)
+		{
+			sample_temp.class_attr = sample_temp.class_attr + temp[4][i];
+		}
+
+		root_node->data.push_back(sample_temp);
+	}
+	root_node->impurity = gini_impurity(root_node);
+	return root_node;
+}
+
+struct node* read_optical(fstream& input_file)
+{
+	string one_line_input_string;
+	//vector<vector<pair<string, float>>>dataset;
+    struct node* root_node = new struct node;
+
+    root_node->data.clear();
+    root_node->parent = NULL;
+    root_node->true_branch = NULL;
+    root_node->false_branch = NULL;
+    root_node->impurity = 1;
+   	root_node->part_attr.clear();
+	root_node->part_thres = 0;
+	root_node->is_leaf = false;
+    
+	while( getline(input_file, one_line_input_string) )
+	{
+		vector<string> temp;
+		struct sample sample_temp;
+
+		split(one_line_input_string, temp, ',');
+		
+		// The number of attribute in "iris.txt" is 64.
+		for(int i=0; i<64; i++)
+		{
+			string temmp("attr_");
+			temmp = temmp + to_string(i);
+			sample_temp.value.push_back( make_pair( temmp, stof(temp[i]) ) );
+		}
+
+		for(int i=0; i<(temp[64].size()-1); i++)
+		{
+			sample_temp.class_attr = sample_temp.class_attr + temp[64][i];
+		}
+
+		root_node->data.push_back(sample_temp);
+	}
+	root_node->impurity = gini_impurity(root_node);
+	return root_node;
+}
+
+struct node* read_cross200(fstream& input_file)
+{
+	string one_line_input_string;
+    struct node* root_node = new struct node;
+
+    root_node->data.clear();
+    root_node->parent = NULL;
+    root_node->true_branch = NULL;
+    root_node->false_branch = NULL;
+    root_node->impurity = 1;
+   	root_node->part_attr.clear();
+	root_node->part_thres = 0;
+	root_node->is_leaf = false;
+    
+	while( getline(input_file, one_line_input_string) )
+	{
+		vector<string> temp;
+		struct sample sample_temp;
+
+		split(one_line_input_string, temp, ',');
+		
+		// The number of attribute in "iris.txt" is 2.
+		for(int i=0; i<2; i++)
+		{
+			string temmp("attr_");
+			temmp = temmp + to_string(i);
+			sample_temp.value.push_back( make_pair( temmp, stof(temp[i]) ) );
+		}
+		
+		// Get rid of the last char CR (0x0D).
+		for(int i=0; i<(temp[2].size()-1); i++)
+		{
+			sample_temp.class_attr = sample_temp.class_attr + temp[2][i];
+		}
+
+		root_node->data.push_back(sample_temp);
+	}
+	//root_node->impurity = gini_impurity(root_node);
+	return root_node;
+}
+
+struct node* read_wine(fstream& input_file)
+{
+	string one_line_input_string;
+    struct node* root_node = new struct node;
+
+    root_node->data.clear();
+    root_node->parent = NULL;
+    root_node->true_branch = NULL;
+    root_node->false_branch = NULL;
+    root_node->impurity = 1;
+   	root_node->part_attr.clear();
+	root_node->part_thres = 0;
+	root_node->is_leaf = false;
+    
+	while( getline(input_file, one_line_input_string) )
+	{
+		vector<string> temp;
+		struct sample sample_temp;
+
+		split(one_line_input_string, temp, ',');
+		
+		// The number of attribute in "winequality-red.txt" is 11.
+		for(int i=0; i<11; i++)
+		{
+			string temmp("attr_");
+			temmp = temmp + to_string(i);
+			sample_temp.value.push_back( make_pair( temmp, stof(temp[i]) ) );
+		}
+		
+		// Get rid of the last char CR (0x0D).
+		for(int i=0; i<(temp[11].size()-1); i++)
+		{
+			sample_temp.class_attr = sample_temp.class_attr + temp[11][i];
+		}
+
+		root_node->data.push_back(sample_temp);
+	}
+	//root_node->impurity = gini_impurity(root_node);
+	return root_node;
 }
