@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <unistd.h>
 
 using namespace std;
 
@@ -27,6 +28,10 @@ void build_tree(struct node* node, int attr_num);
 void print_tree(struct node* node, string space);
 pair<float, float> find_best_partition(struct node* node, int selected_attr);
 pair<struct node*, struct node*> partition(struct node* node, string attr, float threshold);
+pair<vector<pair<string, int>>, vector<pair<string, int>>> pseudo_partition(
+	struct node* parent, 
+	int selected_attr, 
+	float threshold);
 struct node* read_iris(fstream& input_file);
 struct node* read_cross200(fstream& input_file);
 struct node* read_optical(fstream& input_file);
@@ -98,7 +103,7 @@ int main(int argc, char** argv)
 
 		// The 'attr_num' of iris.txt is 4.
 		build_tree(train_root, 4);
-		print_tree(train_root, "");
+		//print_tree(train_root, "");
 		cout<<validation(train_root, valid_root->data)<<endl;
 	}
 
@@ -110,7 +115,7 @@ int main(int argc, char** argv)
 
 		// The 'attr_num' of cross200.txt is .
 		build_tree(train_root, 2);
-		print_tree(train_root, "");
+		//print_tree(train_root, "");
 		cout<<validation(train_root, valid_root->data)<<endl;
 	}
 
@@ -122,7 +127,7 @@ int main(int argc, char** argv)
 
 		// The 'attr_num' of optical-digits.txt is 64.
 		build_tree(train_root, 64);
-		print_tree(train_root, "");
+		//print_tree(train_root, "");
 		cout<<validation(train_root, valid_root->data)<<endl;
 	}
 
@@ -134,7 +139,7 @@ int main(int argc, char** argv)
 
 		// The 'attr_num' of winequality-red.txt is 11.
 		build_tree(train_root, 11);
-		print_tree(train_root, "");
+		//print_tree(train_root, "");
 		cout<<validation(train_root, valid_root->data)<<endl;
 	}
 
@@ -256,17 +261,44 @@ pair<float, float> find_best_partition(struct node* parent, int selected_attr)
 		float v_i = parent->data[i].value[selected_attr].second;
 		float v_j = parent->data[i+1].value[selected_attr].second;
 		float threshold = (v_i + v_j)/2;
-		pair<struct node*, struct node*> temp;
+		pair<vector<pair<string, int>>, vector<pair<string, int>>> temp;
 
-		// Try to partition the node with a threshold.
-		temp = partition(parent, selected_attr, threshold);
+		// Try to "simulate" partitioning the node with a threshold.
+		temp = pseudo_partition(parent, selected_attr, threshold);
 
 		// Skip the threshold if it does not partition the node at all.
-		if( temp.first->data.size() == 0 )continue;
-		else if( temp.second->data.size() == 0 )continue;
+		if( temp.first.size() == 0 )continue;
+		else if( temp.second.size() == 0 )continue;
 		
 		// Calculate the information gain after partitioning.
-		float info_gain = information_gain(parent, temp.first, temp.second);
+		float info_gain = 0;
+		float prop = 0;
+		float true_child_impurity = 1;
+		float false_child_impurity = 1;
+		int true_child_size = 0;
+		int false_child_size = 0;
+
+		for(int i=0; i<temp.first.size(); i++)
+			true_child_size = true_child_size + temp.first[i].second;
+		
+		for(int i=0; i<temp.second.size(); i++)
+			false_child_size = false_child_size + temp.second[i].second;
+
+		prop = (float)true_child_size / ( true_child_size + false_child_size );
+		
+		for(int i=0; i<temp.first.size(); i++)
+		{
+			float prob = (float)temp.first[i].second / true_child_size;
+			true_child_impurity -= prob*prob;
+		}
+
+		for(int i=0; i<temp.second.size(); i++)
+		{
+			float prob = (float)temp.second[i].second / false_child_size;
+			false_child_impurity -= prob*prob;
+		}
+
+		info_gain = (float)parent->impurity - prop*true_child_impurity - (1-prop)*false_child_impurity;
 
 		// Find a way to partition that will produce larger infromation gain than before.
 		if(best_info_gain <= info_gain)
@@ -276,6 +308,52 @@ pair<float, float> find_best_partition(struct node* parent, int selected_attr)
 		}
 	}
 	return make_pair(best_info_gain, best_threshold);
+}
+
+pair<vector<pair<string, int>>, vector<pair<string, int>>> pseudo_partition(
+	struct node* parent, int selected_attr, float threshold)
+{
+	vector<pair<string, int>>parent_counts = class_counts(parent);
+	vector<pair<string, int>>true_child_counts = parent_counts;
+	vector<pair<string, int>>false_child_counts = parent_counts;
+
+	// Clean up counting number in both of parent's children.
+	for(int i=0; i<true_child_counts.size(); i++)true_child_counts[i].second = 0;
+	for(int i=0; i<true_child_counts.size(); i++)false_child_counts[i].second = 0;
+
+	for(int i=0; i<parent->data.size(); i++)
+	{
+		// Belong to true_branch
+		if( parent->data[i].value[selected_attr].second >= threshold )
+		{
+			vector<pair<string, int>>::iterator itr = true_child_counts.begin();
+			for(itr; itr!=true_child_counts.end(); itr++)
+				if(itr->first == parent->data[i].class_attr)break;
+			itr->second++;
+		}
+
+		// Belong to false_branch
+		else
+		{
+			vector<pair<string, int>>::iterator itr = false_child_counts.begin();
+			for(itr; itr!=false_child_counts.end(); itr++)
+				if(itr->first == parent->data[i].class_attr)break;
+			itr->second++;
+		}
+	}
+
+	bool empty_partition = true;
+	
+	for(int i=0; i<true_child_counts.size(); i++)
+		if( true_child_counts[i].second != 0)empty_partition = false;
+	if(empty_partition == true)true_child_counts.clear();
+
+	empty_partition = true;
+	for(int i=0; i<false_child_counts.size(); i++)
+		if( false_child_counts[i].second != 0)empty_partition = false;
+	if(empty_partition == true)false_child_counts.clear();
+
+	return make_pair(true_child_counts, false_child_counts);
 }
 
 float gini_impurity(struct node* node)
