@@ -1,76 +1,4 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <deque>
-#include <utility>
-#include <algorithm>
-#include <iomanip>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <unistd.h>
-
-using namespace std;
-
-// Function pre-declaration
-size_t split( const string& input, vector<string>& output, char delimiter );
-bool comparison(const struct sample& A, const struct sample& B, const int& selected_attr);
-vector<pair<string, int>> class_counts(struct node* node);
-float gini_impurity(struct node* node);
-float information_gain(struct node* parent, struct node* true_child, struct node* false_child);
-string classify_function(struct sample sample, struct node* node);
-bool is_leaf_node(struct node* node);
-void holdout_method(struct node* total, struct node* train_root, struct node* valid_root);
-float validation(struct node* train_root, vector<struct sample> valid_data);
-void build_tree(struct node* node, int attr_num);
-void print_tree(struct node* node, string space);
-pair<float, float> find_best_partition(struct node* node, int selected_attr);
-pair<struct node*, struct node*> partition(struct node* node, string attr, float threshold);
-pair<vector<pair<string, int>>, vector<pair<string, int>>> pseudo_partition(
-	struct node* parent, 
-	int selected_attr, 
-	float threshold);
-struct node* read_iris(fstream& input_file);
-struct node* read_cross200(fstream& input_file);
-struct node* read_optical(fstream& input_file);
-struct node* read_wine(fstream& input_file);
-struct node* read_file(fstream& input_file, int attr_num);
-
-// Some data structure
-struct sample
-{
-	vector<pair<string, float>>value;
-	string class_attr;
-};
-
-struct node
-{
-	vector<struct sample>data;
-	struct node* parent;
-	struct node* true_branch;
-	struct node* false_branch;
-	float impurity;
-	string part_attr;
-	float part_thres;
-	bool is_leaf;
-};
-
-class sorter
-{
-private:
-	int criteria; // The alias of the position of the attribute in 'sample.value'.
-public:
-	sorter( const int& selected_attr )
-	{
-		criteria = selected_attr;
-	}
-	bool operator()( const struct sample& A, const struct sample& B )const
-	{
-		return comparison(A, B, criteria);
-	}
-};
+#include "PR3.h"
 
 // Function implementation
 int main(int argc, char** argv)
@@ -197,7 +125,7 @@ void holdout_method(struct node* total, struct node* train_root, struct node* va
 		}
 		else continue;
 	}
-	for(int i=0; i<total->data.size(); i++)
+	for(int i=0; i<(int)total->data.size(); i++)
 	{
 		// This index has not been selected into training subset.
 		if( find(selection_list.begin(), selection_list.end(), i) == selection_list.end() )
@@ -230,7 +158,7 @@ pair<struct node*, struct node*> partition(struct node* parent, int selected_att
 	false_child->part_thres = 0;
 	false_child->is_leaf = false;
 	
-	for(int i=0; i<parent->data.size(); i++)
+	for(int i=0; i<(int)parent->data.size(); i++)
 	{
 		// Belong to true_branch
 		if( parent->data[i].value[selected_attr].second >= threshold )
@@ -255,7 +183,7 @@ pair<float, float> find_best_partition(struct node* parent, int selected_attr)
 	// First at all, sort 'node.data' along with the "selected" attribute.
 	sort(parent->data.begin(), parent->data.end(), sorter(selected_attr));
 
-	for(int i=0; i<(parent->data.size()-1); i++)
+	for(int i=0; i<(int)(parent->data.size()-1); i++)
 	{
 		// v_i is the value of the "selected" attribute of a certain sample.
 		// v_j is the same thing of the next sample.
@@ -279,21 +207,21 @@ pair<float, float> find_best_partition(struct node* parent, int selected_attr)
 		int true_child_size = 0;
 		int false_child_size = 0;
 
-		for(int i=0; i<temp.first.size(); i++)
+		for(int i=0; i<(int)temp.first.size(); i++)
 			true_child_size = true_child_size + temp.first[i].second;
 		
-		for(int i=0; i<temp.second.size(); i++)
+		for(int i=0; i<(int)temp.second.size(); i++)
 			false_child_size = false_child_size + temp.second[i].second;
 
 		prop = (float)true_child_size / ( true_child_size + false_child_size );
 		
-		for(int i=0; i<temp.first.size(); i++)
+		for(int i=0; i<(int)temp.first.size(); i++)
 		{
 			float prob = (float)temp.first[i].second / true_child_size;
 			true_child_impurity -= prob*prob;
 		}
 
-		for(int i=0; i<temp.second.size(); i++)
+		for(int i=0; i<(int)temp.second.size(); i++)
 		{
 			float prob = (float)temp.second[i].second / false_child_size;
 			false_child_impurity -= prob*prob;
@@ -319,16 +247,16 @@ pair<vector<pair<string, int>>, vector<pair<string, int>>> pseudo_partition(
 	vector<pair<string, int>>false_child_counts = parent_counts;
 
 	// Clean up counting number in both of parent's children.
-	for(int i=0; i<true_child_counts.size(); i++)true_child_counts[i].second = 0;
-	for(int i=0; i<true_child_counts.size(); i++)false_child_counts[i].second = 0;
+	for(int i=0; i<(int)true_child_counts.size(); i++)true_child_counts[i].second = 0;
+	for(int i=0; i<(int)true_child_counts.size(); i++)false_child_counts[i].second = 0;
 
-	for(int i=0; i<parent->data.size(); i++)
+	for(int i=0; i<(int)parent->data.size(); i++)
 	{
 		// Belong to true_branch
 		if( parent->data[i].value[selected_attr].second >= threshold )
 		{
 			vector<pair<string, int>>::iterator itr = true_child_counts.begin();
-			for(itr; itr!=true_child_counts.end(); itr++)
+			for(; itr!=true_child_counts.end(); itr++)
 				if(itr->first == parent->data[i].class_attr)break;
 			itr->second++;
 		}
@@ -337,7 +265,7 @@ pair<vector<pair<string, int>>, vector<pair<string, int>>> pseudo_partition(
 		else
 		{
 			vector<pair<string, int>>::iterator itr = false_child_counts.begin();
-			for(itr; itr!=false_child_counts.end(); itr++)
+			for(; itr!=false_child_counts.end(); itr++)
 				if(itr->first == parent->data[i].class_attr)break;
 			itr->second++;
 		}
@@ -345,12 +273,12 @@ pair<vector<pair<string, int>>, vector<pair<string, int>>> pseudo_partition(
 
 	bool empty_partition = true;
 	
-	for(int i=0; i<true_child_counts.size(); i++)
+	for(int i=0; i<(int)true_child_counts.size(); i++)
 		if( true_child_counts[i].second != 0)empty_partition = false;
 	if(empty_partition == true)true_child_counts.clear();
 
 	empty_partition = true;
-	for(int i=0; i<false_child_counts.size(); i++)
+	for(int i=0; i<(int)false_child_counts.size(); i++)
 		if( false_child_counts[i].second != 0)empty_partition = false;
 	if(empty_partition == true)false_child_counts.clear();
 
@@ -362,7 +290,7 @@ float gini_impurity(struct node* node)
 	float impurity = 1;
 	vector<pair<string, int>>counts = class_counts(node);
 	
-	for(int i=0; i<counts.size(); i++)
+	for(int i=0; i<(int)counts.size(); i++)
 	{
 		float prob = (float)counts[i].second / node->data.size();
 		impurity -= prob*prob;
@@ -486,7 +414,7 @@ void print_tree(struct node* node, string space)
 	if( node->is_leaf == true )
 	{
 		vector<pair<string, int>> temp = class_counts(node);
-		for(int i=0; i<temp.size(); i++)
+		for(int i=0; i<(int)temp.size(); i++)
 			cout<<space<<temp[i].first<<": "<<temp[i].second<<endl;
 		if(node->true_branch!=NULL)cout<<"Wr";
 		return;
@@ -513,7 +441,7 @@ float validation(struct node* train_root, vector<struct sample> valid_data)
 {
 	int correct_classified_num = 0;
 
-	for(int i=0; i<valid_data.size(); i++)
+	for(int i=0; i<(int)valid_data.size(); i++)
 	{
 		// The result of classification matches to the class attribute.
 		if(classify_function(valid_data[i], train_root) == valid_data[i].class_attr)
@@ -533,7 +461,7 @@ string classify_function(struct sample sample, struct node* node)
 	else
 	{		
 		int part_attr_index = 0;
-		for( ; part_attr_index<sample.value.size(); part_attr_index++)
+		for(; part_attr_index<(int)sample.value.size(); part_attr_index++)
 			if( sample.value[part_attr_index].first == node->part_attr )break;
 
 		if( sample.value[part_attr_index].second >= node->part_thres )
@@ -571,7 +499,7 @@ struct node* read_iris(fstream& input_file)
 			sample_temp.value.push_back( make_pair( temmp, stof(temp[i]) ) );
 		}
 		
-		for(int i=0; i<(temp[4].size()-1); i++)
+		for(int i=0; i<(int)(temp[4].size()-1); i++)
 		{
 			sample_temp.class_attr = sample_temp.class_attr + temp[4][i];
 		}
@@ -612,7 +540,7 @@ struct node* read_optical(fstream& input_file)
 			sample_temp.value.push_back( make_pair( temmp, stof(temp[i]) ) );
 		}
 
-		for(int i=0; i<(temp[64].size()-1); i++)
+		for(int i=0; i<(int)(temp[64].size()-1); i++)
 		{
 			sample_temp.class_attr = sample_temp.class_attr + temp[64][i];
 		}
@@ -653,7 +581,7 @@ struct node* read_cross200(fstream& input_file)
 		}
 		
 		// Get rid of the last char CR (0x0D).
-		for(int i=0; i<(temp[2].size()-1); i++)
+		for(int i=0; i<(int)(temp[2].size()-1); i++)
 		{
 			sample_temp.class_attr = sample_temp.class_attr + temp[2][i];
 		}
@@ -694,7 +622,7 @@ struct node* read_wine(fstream& input_file)
 		}
 		
 		// Get rid of the last char CR (0x0D).
-		for(int i=0; i<(temp[11].size()-1); i++)
+		for(int i=0; i<(int)(temp[11].size()-1); i++)
 		{
 			sample_temp.class_attr = sample_temp.class_attr + temp[11][i];
 		}
@@ -735,7 +663,7 @@ struct node* read_file(fstream& input_file, int attr_num)
 		}
 		
 		// Get rid of the last char CR (0x0D).
-		for(int i=0; i<(temp[attr_num].size()-1); i++)
+		for(int i=0; i<(int)(temp[attr_num].size()-1); i++)
 			sample_temp.class_attr += temp[attr_num][i];
 
 		root_node->data.push_back(sample_temp);
